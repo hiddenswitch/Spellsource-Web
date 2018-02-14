@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.0.0-beta.36",
-    "meteor-node-stubs": "^0.3.2"
+    "long": "^4.0.0",
+    "meteor-node-stubs": "^0.3.2",
+    "scrypt": "^6.0.3"
   },
   "eslintConfig": {
     "extends": "@meteorjs/eslint-config-meteor",
