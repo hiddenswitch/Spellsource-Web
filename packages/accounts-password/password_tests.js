@@ -39,7 +39,7 @@ if (Meteor.isClient) (function () {
     // Hack because Tinytest does not clean the database between tests/runs
     this.randomSuffix = Random.id(10);
     this.username = 'AdaLovelace' + this.randomSuffix;
-    this.email =  "Ada-intercept@lovelace.com" + this.randomSuffix;
+    this.email = "Ada-intercept@lovelace.com" + this.randomSuffix;
     this.password = 'password';
     Accounts.createUser(
       {username: this.username, email: this.email, password: this.password},
@@ -67,7 +67,7 @@ if (Meteor.isClient) (function () {
         test.fail(error.message);
       }
       var user = Meteor.user();
-      test.isTrue(user && _.some(user.emails, function(email) {
+      test.isTrue(user && _.some(user.emails, function (email) {
         return email.address === someEmail;
       }));
     });
@@ -125,7 +125,7 @@ if (Meteor.isClient) (function () {
     logoutStep,
     function (test, expect) {
       Meteor.loginWithPassword(this.username, this.password,
-                               loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
     },
     logoutStep,
     // This next step tests reactive contexts which are reactive on
@@ -154,17 +154,86 @@ if (Meteor.isClient) (function () {
     logoutStep,
     function (test, expect) {
       Meteor.loginWithPassword({username: this.username}, this.password,
-                               loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
     },
     logoutStep,
     function (test, expect) {
       Meteor.loginWithPassword(this.email, this.password,
-                               loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
     },
     logoutStep,
     function (test, expect) {
       Meteor.loginWithPassword({email: this.email}, this.password,
-                               loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
+    },
+    logoutStep
+  ]);
+
+
+  testAsyncMulti("passwords - basic login of existing Spellsource user with password", [
+    function (test, expect) {
+      // setup
+      this.username = Random.id();
+      this.email = Random.id() + '-intercept@example.com';
+      this.password = 'password';
+
+      HTTP.call('PUT', 'http://localhost:8080/accounts', {
+        data: {
+          name: this.username,
+          email: this.email,
+          password: this.password
+        }
+      }, expect(function (error) {
+        if (error) {
+          test.fail(error);
+        }
+      }));
+    },
+    function (test, expect) {
+      test.equal(Meteor.userId(), null);
+    },
+    function (test, expect) {
+      Meteor.loginWithPassword(this.username, this.password,
+        loggedInAs(this.username, test, expect));
+    },
+    logoutStep,
+    // This next step tests reactive contexts which are reactive on
+    // Meteor.user().
+    function (test, expect) {
+      // Set up a reactive context that only refreshes when Meteor.user() is
+      // invalidated.
+      var loaded = false;
+      var handle = Tracker.autorun(function () {
+        if (Meteor.user() && Meteor.user().emails)
+          loaded = true;
+      });
+      // At the beginning, we're not logged in.
+      test.isFalse(loaded);
+      Meteor.loginWithPassword(this.username, this.password, expect(function (error) {
+        test.equal(error, undefined);
+        test.notEqual(Meteor.userId(), null);
+        // By the time of the login callback, the user should be loaded.
+        test.isTrue(Meteor.user().emails);
+        // Flushing should get us the rerun as well.
+        Tracker.flush();
+        test.isTrue(loaded);
+        handle.stop();
+      }));
+    },
+    logoutStep,
+    function (test, expect) {
+      Meteor.loginWithPassword({username: this.username}, this.password,
+        loggedInAs(this.username, test, expect));
+    },
+    logoutStep,
+    function (test, expect) {
+      Meteor.loginWithPassword(this.email, this.password,
+        loggedInAs(this.username, test, expect));
+    },
+    logoutStep,
+    function (test, expect) {
+      Meteor.loginWithPassword({email: this.email}, this.password,
+        loggedInAs(this.username, test, expect));
     },
     logoutStep
   ]);
@@ -187,9 +256,9 @@ if (Meteor.isClient) (function () {
     },
     logoutStep,
     // check can login normally with this password.
-    function(test, expect) {
+    function (test, expect) {
       Meteor.loginWithPassword({username: this.username}, this.password,
-                               loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
     },
     logoutStep,
     // plain text password. no API for this, have to invoke callLoginMethod
@@ -201,13 +270,16 @@ if (Meteor.isClient) (function () {
         userCallback: expect(function (error) {
           test.isTrue(error);
           test.isFalse(Meteor.user());
-        })});
+        })
+      });
     },
     function (test, expect) {
       Accounts.callLoginMethod({
         // right password
-        methodArguments: [{user: {username: this.username},
-                           password: this.password}],
+        methodArguments: [{
+          user: {username: this.username},
+          password: this.password
+        }],
         userCallback: loggedInAs(this.username, test, expect)
       });
     },
@@ -220,14 +292,14 @@ if (Meteor.isClient) (function () {
     // We should be able to log in with the username in lower case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { username: "adalovelace" + this.randomSuffix },
+        {username: "adalovelace" + this.randomSuffix},
         this.password,
         loggedInAs(this.username, test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive username " +
-      "with non-ASCII characters", [
+    "with non-ASCII characters", [
     function (test, expect) {
       // Hack because Tinytest does not clean the database between tests/runs
       this.randomSuffix = Random.id(10);
@@ -241,40 +313,40 @@ if (Meteor.isClient) (function () {
     // We should be able to log in with the username in lower case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { username: "ádaløvela😈e" + this.randomSuffix },
+        {username: "ádaløvela😈e" + this.randomSuffix},
         this.password,
         loggedInAs(this.username, test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive username " +
-      "should escape regex special characters", [
+    "should escape regex special characters", [
     createUserStep,
     logoutStep,
     // We shouldn't be able to log in with a regex expression for the username
     function (test, expect) {
       Meteor.loginWithPassword(
-        { username: ".+" + this.randomSuffix },
+        {username: ".+" + this.randomSuffix},
         this.password,
         expectUserNotFound(test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive username " +
-     "should require a match of the full string", [
+    "should require a match of the full string", [
     createUserStep,
     logoutStep,
     // We shouldn't be able to log in with a partial match for the username
     function (test, expect) {
       Meteor.loginWithPassword(
-        { username: "lovelace" + this.randomSuffix },
+        {username: "lovelace" + this.randomSuffix},
         this.password,
         expectUserNotFound(test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive username when " +
-      "there are multiple matches", [
+    "there are multiple matches", [
     createUserStep,
     logoutStep,
     function (test, expect) {
@@ -284,7 +356,7 @@ if (Meteor.isClient) (function () {
     // Create another user with a username that only differs in case
     function (test, expect) {
       Accounts.createUser(
-        { username: this.otherUsername, password: this.password },
+        {username: this.otherUsername, password: this.password},
         loggedInAs(this.otherUsername, test, expect));
     },
     function (test, expect) {
@@ -293,21 +365,21 @@ if (Meteor.isClient) (function () {
     // We shouldn't be able to log in with the username in lower case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { username: "adalovelace" + this.randomSuffix },
+        {username: "adalovelace" + this.randomSuffix},
         this.password,
         expectUserNotFound(test, expect));
     },
     // We should still be able to log in with the username in original case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { username: this.username },
+        {username: this.username},
         this.password,
         loggedInAs(this.username, test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - creating users with the same case insensitive " +
-      "username", [
+    "username", [
     createUserStep,
     logoutStep,
     // Attempting to create another user with a username that only differs in
@@ -315,7 +387,7 @@ if (Meteor.isClient) (function () {
     function (test, expect) {
       this.newUsername = 'adalovelace' + this.randomSuffix;
       Accounts.createUser(
-        { username: this.newUsername, password: this.password },
+        {username: this.newUsername, password: this.password},
         expectError(
           new Meteor.Error(403, "Username already exists."),
           test,
@@ -324,10 +396,10 @@ if (Meteor.isClient) (function () {
     // Make sure the new user has not been inserted
     function (test, expect) {
       Meteor.call('countUsersOnServer',
-        { username: this.newUsername },
+        {username: this.newUsername},
         expect(function (error, result) {
           test.equal(result, 0);
-      }));
+        }));
     }
   ]);
 
@@ -337,53 +409,55 @@ if (Meteor.isClient) (function () {
     // We should be able to log in with the email in lower case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { email: "ada-intercept@lovelace.com" + this.randomSuffix },
+        {email: "ada-intercept@lovelace.com" + this.randomSuffix},
         this.password,
         loggedInAs(this.username, test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive email should " +
-      "escape regex special characters", [
+    "escape regex special characters", [
     createUserStep,
     logoutStep,
     // We shouldn't be able to log in with a regex expression for the email
     function (test, expect) {
       Meteor.loginWithPassword(
-        { email: ".+" + this.randomSuffix },
+        {email: ".+" + this.randomSuffix},
         this.password,
         expectUserNotFound(test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive email should " +
-     "require a match of the full string", [
+    "require a match of the full string", [
     createUserStep,
     logoutStep,
     // We shouldn't be able to log in with a partial match for the email
     function (test, expect) {
       Meteor.loginWithPassword(
-        { email: "com" + this.randomSuffix },
+        {email: "com" + this.randomSuffix},
         this.password,
         expectUserNotFound(test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - logging in with case insensitive email when " +
-      "there are multiple matches", [
+    "there are multiple matches", [
     createUserStep,
     logoutStep,
     function (test, expect) {
       this.otherUsername = 'AdaLovelace' + Random.id(10);
-      this.otherEmail =  "ADA-intercept@lovelace.com" + this.randomSuffix;
+      this.otherEmail = "ADA-intercept@lovelace.com" + this.randomSuffix;
       addSkipCaseInsensitiveChecksForTest(this.otherEmail, test, expect);
     },
     // Create another user with an email that only differs in case
     function (test, expect) {
       Accounts.createUser(
-        { username: this.otherUsername,
+        {
+          username: this.otherUsername,
           email: this.otherEmail,
-          password: this.password },
+          password: this.password
+        },
         loggedInAs(this.otherUsername, test, expect));
     },
     function (test, expect) {
@@ -393,36 +467,36 @@ if (Meteor.isClient) (function () {
     // We shouldn't be able to log in with the email in lower case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { email: "ada-intercept@lovelace.com" + this.randomSuffix },
+        {email: "ada-intercept@lovelace.com" + this.randomSuffix},
         this.password,
         expectUserNotFound(test, expect));
     },
     // We should still be able to log in with the email in original case
     function (test, expect) {
       Meteor.loginWithPassword(
-        { email: this.email },
+        {email: this.email},
         this.password,
         loggedInAs(this.username, test, expect));
     }
   ]);
 
   testAsyncMulti("passwords - creating users with the same case insensitive " +
-      "email", [
+    "email", [
     createUserStep,
     logoutStep,
     // Create user error without callback should throw error
     function (test, expect) {
       this.newUsername = 'adalovelace' + this.randomSuffix;
-      test.throws(function(){
-        Accounts.createUser({ username: this.newUsername, password: '' });
+      test.throws(function () {
+        Accounts.createUser({username: this.newUsername, password: ''});
       }, /Password may not be empty/);
     },
     // Attempting to create another user with an email that only differs in
     // case should fail
     function (test, expect) {
-      this.newEmail =  "ada-intercept@lovelace.com" + this.randomSuffix;
+      this.newEmail = "ada-intercept@lovelace.com" + this.randomSuffix;
       Accounts.createUser(
-        { email: this.newEmail, password: this.password },
+        {email: this.newEmail, password: this.password},
         expectError(
           new Meteor.Error(403, "Email already exists."),
           test,
@@ -431,8 +505,8 @@ if (Meteor.isClient) (function () {
     // Make sure the new user has not been inserted
     function (test, expect) {
       Meteor.call('countUsersOnServer',
-        { 'emails.address': this.newEmail },
-        expect (function (error, result) {
+        {'emails.address': this.newEmail},
+        expect(function (error, result) {
           test.equal(result, 0);
         })
       );
@@ -448,16 +522,16 @@ if (Meteor.isClient) (function () {
       this.password2 = 'password2';
 
       Accounts.createUser(
-        { username: this.username, email: this.email, password: this.password },
+        {username: this.username, email: this.email, password: this.password},
         loggedInAs(this.username, test, expect));
     },
     // Send a password reset email so that we can test that password
     // reset tokens get deleted on password change.
     function (test, expect) {
       Meteor.call("forgotPassword",
-        { email: this.email }, expect(function (error) {
-        test.isFalse(error);
-      }));
+        {email: this.email}, expect(function (error) {
+          test.isFalse(error);
+        }));
     },
     function (test, expect) {
       var self = this;
@@ -477,14 +551,14 @@ if (Meteor.isClient) (function () {
     },
     // change password with blank new password
     function (test, expect) {
-      test.throws(function(){
+      test.throws(function () {
         Accounts.changePassword(this.password, '');
       }, /Password may not be empty/);
     },
     // change password with good old password.
     function (test, expect) {
       Accounts.changePassword(this.password, this.password2,
-                              loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
     },
     function (test, expect) {
       Meteor.call("getResetToken", expect(function (err, token) {
@@ -503,7 +577,7 @@ if (Meteor.isClient) (function () {
     // new password, success
     function (test, expect) {
       Meteor.loginWithPassword(this.email, this.password2,
-                               loggedInAs(this.username, test, expect));
+        loggedInAs(this.username, test, expect));
     },
     logoutStep
   ]);
@@ -515,7 +589,7 @@ if (Meteor.isClient) (function () {
       this.password = 'password';
       this.password2 = 'password2';
       Accounts.createUser(
-        { username: this.username, email: this.email, password: this.password },
+        {username: this.username, email: this.email, password: this.password},
         loggedInAs(this.username, test, expect));
     },
     // Log in a second connection as this user.
@@ -524,23 +598,23 @@ if (Meteor.isClient) (function () {
 
       self.secondConn = DDP.connect(Meteor.absoluteUrl());
       self.secondConn.call('login',
-                { user: { username: self.username }, password: self.password },
-                expect(function (err, result) {
-                  test.isFalse(err);
-                  self.secondConn.setUserId(result.id);
-                  test.isTrue(self.secondConn.userId());
+        {user: {username: self.username}, password: self.password},
+        expect(function (err, result) {
+          test.isFalse(err);
+          self.secondConn.setUserId(result.id);
+          test.isTrue(self.secondConn.userId());
 
-                  self.secondConn.onReconnect = function () {
-                    self.secondConn.apply(
-                      'login',
-                      [{ resume: result.token }],
-                      { wait: true },
-                      function (err, result) {
-                        self.secondConn.setUserId(result && result.id || null);
-                      }
-                    );
-                  };
-                }));
+          self.secondConn.onReconnect = function () {
+            self.secondConn.apply(
+              'login',
+              [{resume: result.token}],
+              {wait: true},
+              function (err, result) {
+                self.secondConn.setUserId(result && result.id || null);
+              }
+            );
+          };
+        }));
     },
     function (test, expect) {
       var self = this;
@@ -567,14 +641,14 @@ if (Meteor.isClient) (function () {
     // forgotPassword called on client with blank email
     function (test, expect) {
       Accounts.forgotPassword(
-        { email: this.email }, expect(function (error) {
+        {email: this.email}, expect(function (error) {
           test.isTrue(error);
-      }));
+        }));
     },
     // forgotPassword called on client with blank email and no callback.
     function (test, expect) {
-      test.throws(function(){
-        Accounts.forgotPassword({ email: this.email });
+      test.throws(function () {
+        Accounts.forgotPassword({email: this.email});
       }, /Must pass options\.email/);
     },
   ]);
@@ -590,14 +664,15 @@ if (Meteor.isClient) (function () {
       }
       Accounts.connection.call = stubMethodCall;
 
-      Accounts.forgotPassword({ email: 'test@meteor.com' });
+      Accounts.forgotPassword({email: 'test@meteor.com'});
       test.equal(
         methodCallArgumentCount,
         2,
         'Method call should have 2 arguments since no callback is passed in'
       );
 
-      Accounts.forgotPassword({ email: 'test@meteor.com' }, () => {});
+      Accounts.forgotPassword({email: 'test@meteor.com'}, () => {
+      });
       test.equal(
         methodCallArgumentCount,
         3,
@@ -618,11 +693,11 @@ if (Meteor.isClient) (function () {
       Accounts.verifyEmail(
         this.token, expect(function (error) {
           test.isTrue(error);
-      }));
+        }));
     },
     // verifyEmail called on client with blank token and no callback.
     function (test, expect) {
-      test.throws(function(){
+      test.throws(function () {
         Accounts.verifyEmail(this.token);
       }, /Need to pass token/);
     },
@@ -639,7 +714,7 @@ if (Meteor.isClient) (function () {
       Accounts.resetPassword(
         this.token, this.newPassword, expect(function (error) {
           test.isTrue(error);
-      }));
+        }));
     },
     function (test, expect) {
       // setup
@@ -651,11 +726,11 @@ if (Meteor.isClient) (function () {
       Accounts.resetPassword(
         this.token, this.newPassword, expect(function (error) {
           test.isTrue(error);
-      }));
+        }));
     },
     // resetPassword called on client with blank password and no callback.
     function (test, expect) {
-      test.throws(function(){
+      test.throws(function () {
         Accounts.resetPassword(this.token, this.newPassword);
       }, /Match error: Expected string, got undefined/);
     },
@@ -670,23 +745,27 @@ if (Meteor.isClient) (function () {
       this.password = 'password';
     },
     // test Accounts.validateNewUser
-    function(test, expect) {
+    function (test, expect) {
       Accounts.createUser(
-        {username: this.username, password: this.password,
-         // should fail the new user validators
-         profile: {invalid: true}},
+        {
+          username: this.username, password: this.password,
+          // should fail the new user validators
+          profile: {invalid: true}
+        },
         expect(function (error) {
           test.equal(error.error, 403);
           test.equal(error.reason, "User validation failed");
         }));
     },
     logoutStep,
-    function(test, expect) {
+    function (test, expect) {
       Accounts.createUser(
-        {username: this.username, password: this.password,
-         // should fail the new user validator with a special
-         // exception
-         profile: {invalidAndThrowException: true}},
+        {
+          username: this.username, password: this.password,
+          // should fail the new user validator with a special
+          // exception
+          profile: {invalidAndThrowException: true}
+        },
         expect(function (error) {
           test.equal(
             error.reason,
@@ -694,13 +773,15 @@ if (Meteor.isClient) (function () {
         }));
     },
     // test Accounts.onCreateUser
-    function(test, expect) {
+    function (test, expect) {
       Accounts.createUser(
-        {username: this.username, password: this.password,
-         testOnCreateUserHook: true},
+        {
+          username: this.username, password: this.password,
+          testOnCreateUserHook: true
+        },
         loggedInAs(this.username, test, expect));
     },
-    function(test, expect) {
+    function (test, expect) {
       test.equal(Meteor.user().profile.touchedByOnCreateUser, true);
     },
     logoutStep
@@ -714,14 +795,16 @@ if (Meteor.isClient) (function () {
       this.password = 'password';
 
       Accounts.createUser(
-        {username: this.username, password: this.password,
-         testOnCreateUserHook: true},
+        {
+          username: this.username, password: this.password,
+          testOnCreateUserHook: true
+        },
         loggedInAs(this.username, test, expect));
     },
     // test Meteor.user(). This test properly belongs in
     // accounts-base/accounts_tests.js, but this is where the tests that
     // actually log in are.
-    function(test, expect) {
+    function (test, expect) {
       var self = this;
       var clientUser = Meteor.user();
       Accounts.connection.call('testMeteorUser', expect(function (err, result) {
@@ -732,16 +815,16 @@ if (Meteor.isClient) (function () {
         test.equal(err, undefined);
       }));
     },
-    function(test, expect) {
+    function (test, expect) {
       // Test that even with no published fields, we still have a document.
-      Accounts.connection.call('clearUsernameAndProfile', expect(function() {
+      Accounts.connection.call('clearUsernameAndProfile', expect(function () {
         test.isTrue(Meteor.userId());
         var user = Meteor.user();
         test.equal(user, {_id: Meteor.userId()});
       }));
     },
     logoutStep,
-    function(test, expect) {
+    function (test, expect) {
       var clientUser = Meteor.user();
       test.equal(clientUser, null);
       test.equal(Meteor.userId(), null);
@@ -757,8 +840,10 @@ if (Meteor.isClient) (function () {
     function (test, expect) {
       this.otherUsername = Random.id();
       Accounts.createUser(
-        {username: this.otherUsername, password: 'dontcare',
-         testOnCreateUserHook: true},
+        {
+          username: this.otherUsername, password: 'dontcare',
+          testOnCreateUserHook: true
+        },
         loggedInAs(this.otherUsername, test, expect));
     },
     function (test, expect) {
@@ -770,14 +855,16 @@ if (Meteor.isClient) (function () {
       this.password = 'password';
 
       Accounts.createUser(
-        {username: this.username, password: this.password,
-         testOnCreateUserHook: true},
+        {
+          username: this.username, password: this.password,
+          testOnCreateUserHook: true
+        },
         loggedInAs(this.username, test, expect));
     },
     // test the default Meteor.users allow rule. This test properly belongs in
     // accounts-base/accounts_tests.js, but this is where the tests that
     // actually log in are.
-    function(test, expect) {
+    function (test, expect) {
       this.userId = Meteor.userId();
       test.notEqual(this.userId, null);
       test.notEqual(this.userId, this.otherUserId);
@@ -791,7 +878,7 @@ if (Meteor.isClient) (function () {
           test.isFalse(_.has(Meteor.user().profile, 'updated'));
         }));
     },
-    function(test, expect) {
+    function (test, expect) {
       // Can't update another user.
       Meteor.users.update(
         this.otherUserId, {$set: {'profile.updated': 42}},
@@ -800,7 +887,7 @@ if (Meteor.isClient) (function () {
           test.equal(err.error, 403);
         }));
     },
-    function(test, expect) {
+    function (test, expect) {
       // Can't update using a non-ID selector. (This one is thrown client-side.)
       test.throws(function () {
         Meteor.users.update(
@@ -808,7 +895,7 @@ if (Meteor.isClient) (function () {
       });
       test.isFalse(_.has(Meteor.user().profile, 'updated'));
     },
-    function(test, expect) {
+    function (test, expect) {
       // Can update own profile using ID.
       Meteor.users.update(
         this.userId, {$set: {'profile.updated': 42}},
@@ -910,8 +997,8 @@ if (Meteor.isClient) (function () {
         test.isFalse(err);
         Meteor.logoutOtherClients(function (err) {
           test.isFalse(err);
-          secondConn.call('login', { resume: token },
-                          expectSecondConnLoggedOut);
+          secondConn.call('login', {resume: token},
+            expectSecondConnLoggedOut);
           Accounts.connection.call('login', {
             resume: Accounts._storedLoginToken()
           }, expectAccountsConnLoggedIn);
@@ -925,8 +1012,8 @@ if (Meteor.isClient) (function () {
           test.isFalse(err);
           token = Accounts._storedLoginToken();
           test.isTrue(token);
-          secondConn.call('login', { resume: token },
-                          expectSecondConnLoggedIn);
+          secondConn.call('login', {resume: token},
+            expectSecondConnLoggedIn);
         })
       );
     },
@@ -958,7 +1045,7 @@ if (Meteor.isClient) (function () {
         // connection is logged out. In general our tests aren't resilient to
         // mid-test reconnects.
         self.secondConn.onReconnect = function () {
-          self.secondConn.call("login", { resume: token }, expectLoginError);
+          self.secondConn.call("login", {resume: token}, expectLoginError);
         };
         Accounts.connection.call("logoutOtherClients", expectValidToken);
       });
@@ -968,8 +1055,8 @@ if (Meteor.isClient) (function () {
         token = Accounts._storedLoginToken();
         self.beforeLogoutOthersToken = token;
         test.isTrue(token);
-        self.secondConn.call("login", { resume: token },
-                             expectSecondConnLoggedIn);
+        self.secondConn.call("login", {resume: token},
+          expectSecondConnLoggedIn);
       }));
     },
     // Test that logoutOtherClients logged out Accounts.connection and that the
@@ -1001,7 +1088,6 @@ if (Meteor.isClient) (function () {
       );
     },
     logoutStep,
-
 
 
     function (test, expect) {
@@ -1108,7 +1194,8 @@ if (Meteor.isClient) (function () {
     function (test, expect) {
       this.onLogin.stop();
       test.isTrue(this.attempt);
-      expect(function () {})();
+      expect(function () {
+      })();
     }
   ]);
 
@@ -1156,7 +1243,8 @@ if (Meteor.isClient) (function () {
     logoutStep,
     function (test, expect) {
       test.isTrue(this.logoutSuccess);
-      expect(function() {})();
+      expect(function () {
+      })();
     }
   ]);
 
@@ -1245,7 +1333,8 @@ if (Meteor.isClient) (function () {
     function (test, expect) {
       this.onLoginFailure.stop();
       test.isTrue(this.attempt);
-      expect(function () {})();
+      expect(function () {
+      })();
     }
   ]);
 
@@ -1299,7 +1388,7 @@ if (Meteor.isClient) (function () {
     function (test, expect) {
       Accounts.callLoginMethod({
         methodName: "login",
-        methodArguments: [ { user: { username: this.username }, password: "abcdef" } ],
+        methodArguments: [{user: {username: this.username}, password: "abcdef"}],
         userCallback: expect(function (err) {
           test.isFalse(err);
         })
@@ -1329,7 +1418,7 @@ if (Meteor.isClient) (function () {
     },
     logoutStep
   ]);
-}) ();
+})();
 
 
 if (Meteor.isServer) (function () {
@@ -1337,8 +1426,9 @@ if (Meteor.isServer) (function () {
   Tinytest.add(
     'passwords - setup more than one onCreateUserHook',
     function (test) {
-      test.throws(function() {
-        Accounts.onCreateUser(function () {});
+      test.throws(function () {
+        Accounts.onCreateUser(function () {
+        });
       });
     });
 
@@ -1352,8 +1442,10 @@ if (Meteor.isServer) (function () {
         Accounts.createUser({username: username, profile: {invalid: true}});
       });
 
-      var userId = Accounts.createUser({username: username,
-                                        testOnCreateUserHook: true});
+      var userId = Accounts.createUser({
+        username: username,
+        testOnCreateUserHook: true
+      });
 
       test.isTrue(userId);
       var user = Meteor.users.findOne(userId);
@@ -1455,7 +1547,7 @@ if (Meteor.isServer) (function () {
           // up here before the observe has been set up.
           simplePoll(
             function () {
-              return !! Accounts._getUserObserve(serverConn.id);
+              return !!Accounts._getUserObserve(serverConn.id);
             },
             function () {
               test.isTrue(Accounts._getUserObserve(serverConn.id));
@@ -1463,7 +1555,7 @@ if (Meteor.isServer) (function () {
             },
             function () {
               test.fail("timed out waiting for user observe for connection " +
-                        serverConn.id);
+                serverConn.id);
               onComplete();
             }
           );
@@ -1542,12 +1634,12 @@ if (Meteor.isServer) (function () {
           ));
 
           test.isTrue(clientConn.call("login", {
-            user: { username },
+            user: {username},
             password: "new-password"
           }));
 
           onComplete();
-      });
+        });
     });
 
   Tinytest.add(
@@ -1574,7 +1666,7 @@ if (Meteor.isServer) (function () {
       test.isTrue(match);
       var resetPasswordToken = match[1];
 
-      Meteor.users.update(userId, {$set: {"services.password.reset.when":  new Date(Date.now() + -5 * 24 * 3600 * 1000) }});
+      Meteor.users.update(userId, {$set: {"services.password.reset.when": new Date(Date.now() + -5 * 24 * 3600 * 1000)}});
 
       test.throws(function () {
         Meteor.call("resetPassword", resetPasswordToken, "new-password");
@@ -1645,7 +1737,7 @@ if (Meteor.isServer) (function () {
           ));
 
           test.isTrue(clientConn.call("login", {
-            user: { username },
+            user: {username},
             password: "new-password"
           }));
 
@@ -1676,7 +1768,7 @@ if (Meteor.isServer) (function () {
       test.isTrue(match);
       var enrollPasswordToken = match[1];
 
-      Meteor.users.update(userId, {$set: {"services.password.reset.when":  new Date(Date.now() + -35 * 24 * 3600 * 1000) }});
+      Meteor.users.update(userId, {$set: {"services.password.reset.when": new Date(Date.now() + -35 * 24 * 3600 * 1000)}});
 
       test.throws(function () {
         Meteor.call("resetPassword", enrollPasswordToken, "new-password");
@@ -1723,7 +1815,7 @@ if (Meteor.isServer) (function () {
       test.isTrue(resetToken);
 
       Accounts._expirePasswordEnrollTokens(new Date(), userId);
-      test.equal(resetToken,Meteor.users.findOne(userId).services.password.reset);
+      test.equal(resetToken, Meteor.users.findOne(userId).services.password.reset);
     }
   )
 
@@ -1746,7 +1838,7 @@ if (Meteor.isServer) (function () {
   });
 
   Tinytest.add("passwords - change username to a new one only differing " +
-      "in case", function (test) {
+    "in case", function (test) {
     var username = Random.id() + "user";
     var userId = Accounts.createUser({
       username: username.toUpperCase()
@@ -1763,7 +1855,7 @@ if (Meteor.isServer) (function () {
   // We should not be able to change the username to one that only
   // differs in case from an existing one
   Tinytest.add("passwords - change username should fail when there are " +
-      "existing users with a username only differing in case", function (test) {
+    "existing users with a username only differing in case", function (test) {
     var username = Random.id() + "user";
     var usernameUpper = username.toUpperCase();
 
@@ -1800,9 +1892,9 @@ if (Meteor.isServer) (function () {
     Accounts.addEmail(userId, thirdEmail, true);
 
     test.equal(Accounts._findUserByQuery({id: userId}).emails, [
-      { address: origEmail, verified: false },
-      { address: newEmail, verified: false },
-      { address: thirdEmail, verified: true }
+      {address: origEmail, verified: false},
+      {address: newEmail, verified: false},
+      {address: thirdEmail, verified: true}
     ]);
 
     // Test findUserByEmail as well while we're here
@@ -1810,7 +1902,7 @@ if (Meteor.isServer) (function () {
   });
 
   Tinytest.add("passwords - add email when the user has an existing email " +
-      "only differing in case", function (test) {
+    "only differing in case", function (test) {
     var origEmail = Random.id() + "@turing.com";
     var userId = Accounts.createUser({
       email: origEmail
@@ -1823,13 +1915,13 @@ if (Meteor.isServer) (function () {
     Accounts.addEmail(userId, thirdEmail, true);
 
     test.equal(Accounts._findUserByQuery({id: userId}).emails, [
-      { address: thirdEmail, verified: true },
-      { address: newEmail, verified: false }
+      {address: thirdEmail, verified: true},
+      {address: newEmail, verified: false}
     ]);
   });
 
   Tinytest.add("passwords - add email should fail when there is an existing " +
-      "user with an email only differing in case", function (test) {
+    "user with an email only differing in case", function (test) {
     var user1Email = Random.id() + "@turing.com";
     var userId1 = Accounts.createUser({
       email: user1Email
@@ -1846,11 +1938,11 @@ if (Meteor.isServer) (function () {
     }, /Email already exists/);
 
     test.equal(Accounts._findUserByQuery({id: userId1}).emails, [
-      { address: user1Email, verified: false }
+      {address: user1Email, verified: false}
     ]);
 
     test.equal(Accounts._findUserByQuery({id: userId2}).emails, [
-      { address: user2Email, verified: false }
+      {address: user2Email, verified: false}
     ]);
   });
 
@@ -1867,22 +1959,22 @@ if (Meteor.isServer) (function () {
     Accounts.addEmail(userId, thirdEmail, true);
 
     test.equal(Accounts._findUserByQuery({id: userId}).emails, [
-      { address: origEmail, verified: false },
-      { address: newEmail, verified: false },
-      { address: thirdEmail, verified: true }
+      {address: origEmail, verified: false},
+      {address: newEmail, verified: false},
+      {address: thirdEmail, verified: true}
     ]);
 
     Accounts.removeEmail(userId, newEmail);
 
     test.equal(Accounts._findUserByQuery({id: userId}).emails, [
-      { address: origEmail, verified: false },
-      { address: thirdEmail, verified: true }
+      {address: origEmail, verified: false},
+      {address: thirdEmail, verified: true}
     ]);
 
     Accounts.removeEmail(userId, origEmail);
 
     test.equal(Accounts._findUserByQuery({id: userId}).emails, [
-      { address: thirdEmail, verified: true }
+      {address: thirdEmail, verified: true}
     ]);
   });
 
@@ -1897,7 +1989,7 @@ if (Meteor.isServer) (function () {
       // default number of rounds.
       let username = Random.id();
       const password = 'abc123';
-      const userId1 = Accounts.createUser({ username, password });
+      const userId1 = Accounts.createUser({username, password});
       let user1 = Meteor.users.findOne(userId1);
       let rounds = getUserHashRounds(user1);
       test.equal(rounds, Accounts._bcryptRounds);
@@ -1919,7 +2011,7 @@ if (Meteor.isServer) (function () {
         // When a custom number of bcrypt rounds is set, make sure it's
         // used for new bcrypt password hashes.
         username = Random.id();
-        const userId2 = Accounts.createUser({ username, password });
+        const userId2 = Accounts.createUser({username, password});
         const user2 = Meteor.users.findOne(userId2);
         rounds = getUserHashRounds(user2);
         test.equal(rounds, customRounds);
@@ -1933,4 +2025,4 @@ if (Meteor.isServer) (function () {
     }
   );
 
-}) ();
+})();
