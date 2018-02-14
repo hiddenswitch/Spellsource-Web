@@ -9,7 +9,6 @@ Package.describe({
 });
 
 Package.onUse(function(api) {
-  api.use('npm-bcrypt', 'server');
   api.use('scrypt', 'server');
 
   api.use([

@@ -161,14 +161,14 @@ Meteor.methods({
     var user = Meteor.users.findOne({username: username});
     if (user.services && user.services.password && user.services.password.srp)
       throw new Error("srp wasn't removed");
-    if (!(user.services && user.services.password && user.services.password.bcrypt))
-      throw new Error("bcrypt wasn't added");
+    if (!(user.services && user.services.password && user.services.password.scrypt))
+      throw new Error("scrypt wasn't added");
   },
 
   testNoSRPUpgrade: function (username) {
     var user = Meteor.users.findOne({username: username});
-    if (user.services && user.services.password && user.services.password.bcrypt)
-      throw new Error("bcrypt was added");
+    if (user.services && user.services.password && user.services.password.scrypt)
+      throw new Error("scrypt was added");
     if (user.services && user.services.password && ! user.services.password.srp)
       throw new Error("srp was removed");
   }

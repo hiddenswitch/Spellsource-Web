@@ -1338,7 +1338,7 @@ if (Meteor.isClient) (function () {
     }
   ]);
 
-  testAsyncMulti("passwords - srp to bcrypt upgrade", [
+  testAsyncMulti("passwords - srp to scrypt upgrade", [
     logoutStep,
     // Create user with old SRP credentials in the database.
     function (test, expect) {
@@ -1360,7 +1360,7 @@ if (Meteor.isClient) (function () {
       }));
     },
     logoutStep,
-    // After the upgrade to bcrypt we're still able to login.
+    // After the upgrade to scrypt we're still able to login.
     function (test, expect) {
       Meteor.loginWithPassword(this.username, 'abcdef', expect(function (error) {
         test.isFalse(error);
@@ -1374,7 +1374,7 @@ if (Meteor.isClient) (function () {
     }
   ]);
 
-  testAsyncMulti("passwords - srp to bcrypt upgrade via password change", [
+  testAsyncMulti("passwords - srp to scrypt upgrade via password change", [
     logoutStep,
     // Create user with old SRP credentials in the database.
     function (test, expect) {
@@ -1384,7 +1384,7 @@ if (Meteor.isClient) (function () {
         self.username = result;
       }));
     },
-    // Log in with the plaintext password handler, which should NOT upgrade us to bcrypt.
+    // Log in with the plaintext password handler, which should NOT upgrade us to scrypt.
     function (test, expect) {
       Accounts.callLoginMethod({
         methodName: "login",
@@ -1399,7 +1399,7 @@ if (Meteor.isClient) (function () {
         test.isFalse(error);
       }));
     },
-    // Changing our password should upgrade us to bcrypt.
+    // Changing our password should upgrade us to scrypt.
     function (test, expect) {
       Accounts.changePassword("abcdef", "abcdefg", expect(function (error) {
         test.isFalse(error);
@@ -1468,7 +1468,7 @@ if (Meteor.isServer) (function () {
       // set a new password.
       Accounts.setPassword(userId, 'new password');
       user = Meteor.users.findOne(userId);
-      var oldSaltedHash = user.services.password.bcrypt;
+      var oldSaltedHash = user.services.password.scrypt;
       test.isTrue(oldSaltedHash);
 
       // Send a reset password email (setting a reset token) and insert a login
@@ -1481,7 +1481,7 @@ if (Meteor.isServer) (function () {
       // reset with the same password, see we get a different salted hash
       Accounts.setPassword(userId, 'new password', {logout: false});
       user = Meteor.users.findOne(userId);
-      var newSaltedHash = user.services.password.bcrypt;
+      var newSaltedHash = user.services.password.scrypt;
       test.isTrue(newSaltedHash);
       test.notEqual(oldSaltedHash, newSaltedHash);
       // No more reset token.
@@ -1492,7 +1492,7 @@ if (Meteor.isServer) (function () {
       // reset again, see that the login tokens are gone.
       Accounts.setPassword(userId, 'new password');
       user = Meteor.users.findOne(userId);
-      var newerSaltedHash = user.services.password.bcrypt;
+      var newerSaltedHash = user.services.password.scrypt;
       test.isTrue(newerSaltedHash);
       test.notEqual(oldSaltedHash, newerSaltedHash);
       test.notEqual(newSaltedHash, newerSaltedHash);
@@ -1977,52 +1977,5 @@ if (Meteor.isServer) (function () {
       {address: thirdEmail, verified: true}
     ]);
   });
-
-  Tinytest.addAsync(
-    'passwords - allow custom bcrypt rounds',
-    function (test, done) {
-      function getUserHashRounds(user) {
-        return Number(user.services.password.bcrypt.substring(4, 6));
-      }
-
-      // Verify that a bcrypt hash generated for a new account uses the
-      // default number of rounds.
-      let username = Random.id();
-      const password = 'abc123';
-      const userId1 = Accounts.createUser({username, password});
-      let user1 = Meteor.users.findOne(userId1);
-      let rounds = getUserHashRounds(user1);
-      test.equal(rounds, Accounts._bcryptRounds);
-
-      // When a custom number of bcrypt rounds is set via Accounts.config,
-      // and an account was already created using the default number of rounds,
-      // make sure that a new hash is created (and stored) using the new number
-      // of rounds, the next time the password is checked.
-      const defaultRounds = Accounts._bcryptRounds;
-      const customRounds = 11;
-      Accounts._bcryptRounds = customRounds;
-      Accounts._checkPassword(user1, password);
-      Meteor.setTimeout(() => {
-        user1 = Meteor.users.findOne(userId1);
-        rounds = getUserHashRounds(user1);
-        test.equal(rounds, customRounds);
-        Accounts._options.bcryptRounds = null;
-
-        // When a custom number of bcrypt rounds is set, make sure it's
-        // used for new bcrypt password hashes.
-        username = Random.id();
-        const userId2 = Accounts.createUser({username, password});
-        const user2 = Meteor.users.findOne(userId2);
-        rounds = getUserHashRounds(user2);
-        test.equal(rounds, customRounds);
-
-        // Cleanup
-        Accounts._bcryptRounds = defaultRounds;
-        Meteor.users.remove(userId1);
-        Meteor.users.remove(userId2);
-        done();
-      }, 5000);
-    }
-  );
 
 })();

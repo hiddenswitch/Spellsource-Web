@@ -1,10 +1,10 @@
 // Used in the various functions below to handle errors consistently
 function reportError(error, callback) {
-   if (callback) {
-     callback(error);
-   } else {
-     throw error;
-   }
+  if (callback) {
+    callback(error);
+  } else {
+    throw error;
+  }
 };
 
 // Attempt to log in with a password.
@@ -44,7 +44,7 @@ Meteor.loginWithPassword = function (selector, password, callback) {
     }],
     userCallback: function (error, result) {
       if (error && error.error === 400 &&
-          error.reason === 'old password format') {
+        error.reason === 'old password format') {
         // The "reason" string should match the error thrown in the
         // password login handler in password_server.js.
 
@@ -72,11 +72,9 @@ Meteor.loginWithPassword = function (selector, password, callback) {
   });
 };
 
+// Passwords will never be hashed in this login model.
 Accounts._hashPassword = function (password) {
-  return {
-    digest: SHA256(password),
-    algorithm: "sha-256"
-  };
+  return password;
 };
 
 // XXX COMPAT WITH 0.8.1.3
@@ -90,11 +88,12 @@ var srpUpgradePath = function (options, callback) {
   var details;
   try {
     details = EJSON.parse(options.upgradeError.details);
-  } catch (e) {}
+  } catch (e) {
+  }
   if (!(details && details.format === 'srp')) {
     reportError(
       new Meteor.Error(400, "Password is old. Please reset your " +
-                       "password."), callback);
+        "password."), callback);
   } else {
     Accounts.callLoginMethod({
       methodArguments: [{
@@ -172,13 +171,13 @@ Accounts.changePassword = function (oldPassword, newPassword, callback) {
     function (error, result) {
       if (error || !result) {
         if (error && error.error === 400 &&
-            error.reason === 'old password format') {
+          error.reason === 'old password format') {
           // XXX COMPAT WITH 0.8.1.3
           // The server is telling us to upgrade from SRP to bcrypt, as
           // in Meteor.loginWithPassword.
           srpUpgradePath({
             upgradeError: error,
-            userSelector: { id: Meteor.userId() },
+            userSelector: {id: Meteor.userId()},
             plaintextPassword: oldPassword
           }, function (err) {
             if (err) {
@@ -216,7 +215,7 @@ Accounts.changePassword = function (oldPassword, newPassword, callback) {
  * @param {Function} [callback] Optional callback. Called with no arguments on success, or with a single `Error` argument on failure.
  * @importFromPackage accounts-base
  */
-Accounts.forgotPassword = function(options, callback) {
+Accounts.forgotPassword = function (options, callback) {
   if (!options.email) {
     return reportError(new Meteor.Error(400, "Must pass options.email"), callback);
   }
@@ -243,7 +242,7 @@ Accounts.forgotPassword = function(options, callback) {
  * @param {Function} [callback] Optional callback. Called with no arguments on success, or with a single `Error` argument on failure.
  * @importFromPackage accounts-base
  */
-Accounts.resetPassword = function(token, newPassword, callback) {
+Accounts.resetPassword = function (token, newPassword, callback) {
   check(token, String);
   check(newPassword, String);
 
@@ -254,7 +253,8 @@ Accounts.resetPassword = function(token, newPassword, callback) {
   Accounts.callLoginMethod({
     methodName: 'resetPassword',
     methodArguments: [token, Accounts._hashPassword(newPassword)],
-    userCallback: callback});
+    userCallback: callback
+  });
 };
 
 // Verifies a user's email address based on a token originally
@@ -270,7 +270,7 @@ Accounts.resetPassword = function(token, newPassword, callback) {
  * @param {Function} [callback] Optional callback. Called with no arguments on success, or with a single `Error` argument on failure.
  * @importFromPackage accounts-base
  */
-Accounts.verifyEmail = function(token, callback) {
+Accounts.verifyEmail = function (token, callback) {
   if (!token) {
     return reportError(new Meteor.Error(400, "Need to pass token"), callback);
   }
@@ -278,5 +278,6 @@ Accounts.verifyEmail = function(token, callback) {
   Accounts.callLoginMethod({
     methodName: 'verifyEmail',
     methodArguments: [token],
-    userCallback: callback});
+    userCallback: callback
+  });
 };
